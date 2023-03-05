@@ -127,8 +127,14 @@ describe("start screen", () => {
     answerAll(questions.map(() => "x"));
 
     expect(await screen.findByText("Thank you, Sam Rivera.")).toBeInTheDocument();
-    expect(screen.getByText(`You scored 2 out of ${questions.length}.`)).toBeInTheDocument();
+    expect(screen.getByText(`You scored 2 out of ${questions.length}.`, { exact: false })).toBeInTheDocument();
     expect(submitQuiz.mock.calls[0][0].submittedBy).toBe("Sam Rivera");
+  });
+
+  it("moves focus to the answer field when the quiz starts", async () => {
+    await renderQuiz();
+
+    expect(screen.getByLabelText("Your answer")).toHaveFocus();
   });
 
   it("caps the name at what the API accepts", async () => {

@@ -3,6 +3,7 @@ import Countdown from "react-countdown";
 
 import { QUESTION_TIME_LIMIT_MS } from "../constants/constants";
 import { fetchQuestions, submitQuiz } from "../api";
+import { formatClock } from "./clock";
 import { answeredCount, createInitialState, quizReducer } from "./quizReducer";
 
 import "../style/quiz.css";
@@ -77,14 +78,20 @@ const Quiz = () => {
   const progressPercent = total ? Math.round((answered / total) * 100) : 0;
 
   return (
-    <main className="quiz" aria-live="polite">
+    // No aria-live on the whole card: the countdown would be read out every
+    // second. The panels that change announce themselves instead.
+    <main className="quiz">
       <header className="quiz__header">
         <p className="quiz__eyebrow">General knowledge</p>
-        <h1 className="quiz__title">Quiz</h1>
+        <h1 className="quiz__title">Pocket Trivia</h1>
         {phase === "answering" ? (
           <p className="quiz__timer">
-            Time remaining{" "}
-            <Countdown date={deadline} onComplete={() => dispatch({ type: "finish" })} />
+            <span>Time left</span>
+            <Countdown
+              date={deadline}
+              onComplete={() => dispatch({ type: "finish" })}
+              renderer={(parts) => <time>{formatClock(parts)}</time>}
+            />
           </p>
         ) : null}
       </header>
@@ -163,21 +170,28 @@ const Quiz = () => {
       ) : null}
 
       {phase === "submitted" ? (
-        <section className="quiz__panel quiz__panel--done">
+        <section className="quiz__panel quiz__panel--done" role="status">
           <h2 className="quiz__done-title">
             {name.trim() ? `Thank you, ${name.trim()}.` : "Thank you for taking this quiz."}
           </h2>
-          <p className="quiz__done-body">
-            {typeof score === "number"
-              ? `You scored ${score} out of ${total}.`
-              : `All ${total} answers were recorded.`}
-          </p>
+          {typeof score === "number" ? (
+            <p className="quiz__done-body">
+              You scored {score} out of {total}.
+              <span className="quiz__score" aria-hidden="true">
+                {score}/{total}
+              </span>
+            </p>
+          ) : (
+            <p className="quiz__done-body">All {total} answers were recorded.</p>
+          )}
         </section>
       ) : null}
 
       {phase === "submitting" ? (
         <section className="quiz__panel">
-          <p className="quiz__status">Submitting your answers…</p>
+          <p className="quiz__status" role="status">
+            Submitting your answers…
+          </p>
         </section>
       ) : null}
 
@@ -202,13 +216,17 @@ const Quiz = () => {
           <p className="quiz__count">
             Question <strong>{index + 1}</strong> of {total}
           </p>
-          <h2 className="quiz__question">{answers[index].questionText}</h2>
+          <h2 className="quiz__question" aria-live="polite">
+            {answers[index].questionText}
+          </h2>
           <label className="quiz__label" htmlFor="answer">
             Your answer
           </label>
+          {/* Focus follows the quiz: the Start button is gone once it is pressed. */}
           <input
             id="answer"
             className="quiz__input"
+            autoFocus
             autoComplete="off"
             placeholder="Type your answer"
             value={draft}
