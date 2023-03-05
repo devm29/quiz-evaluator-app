@@ -8,3 +8,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* #root is the flex item inside body, so it has to claim the width; otherwise
+   the card shrinks to its content on the short result and error panels. */
+#root {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
