@@ -3,23 +3,21 @@ import { QuizApiError, QuizPost } from "./api";
 const QUIZ = { submittedBy: "test", question: [] };
 
 describe("QuizPost", () => {
-  const originalEnv = process.env;
-
   beforeEach(() => {
-    process.env = { ...originalEnv, REACT_APP_API_BASEURL: "http://localhost:8221/" };
-    global.fetch = jest.fn();
+    vi.stubEnv("VITE_API_BASEURL", "http://localhost:8221/");
+    vi.stubGlobal("fetch", vi.fn());
   });
 
   afterEach(() => {
-    process.env = originalEnv;
-    jest.resetAllMocks();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   function respond({ ok = true, status = 200, body = {} } = {}) {
     fetch.mockResolvedValueOnce({
       ok,
       status,
-      json: jest.fn().mockResolvedValue(body),
+      json: vi.fn().mockResolvedValue(body),
     });
   }
 
@@ -37,7 +35,7 @@ describe("QuizPost", () => {
   });
 
   it("tolerates a base URL without a trailing slash", async () => {
-    process.env.REACT_APP_API_BASEURL = "http://localhost:8221";
+    vi.stubEnv("VITE_API_BASEURL", "http://localhost:8221");
     respond();
 
     await QuizPost(QUIZ);
@@ -73,7 +71,7 @@ describe("QuizPost", () => {
     fetch.mockResolvedValueOnce({
       ok: false,
       status: 502,
-      json: jest.fn().mockRejectedValue(new SyntaxError("not json")),
+      json: vi.fn().mockRejectedValue(new SyntaxError("not json")),
     });
 
     await expect(QuizPost(QUIZ)).rejects.toThrow("Failed to submit quiz");
@@ -88,10 +86,10 @@ describe("QuizPost", () => {
   });
 
   it("fails clearly when the base URL is not configured", async () => {
-    delete process.env.REACT_APP_API_BASEURL;
+    vi.stubEnv("VITE_API_BASEURL", "");
 
     await expect(QuizPost(QUIZ)).rejects.toThrow(
-      "REACT_APP_API_BASEURL is not configured"
+      "VITE_API_BASEURL is not configured"
     );
     expect(fetch).not.toHaveBeenCalled();
   });

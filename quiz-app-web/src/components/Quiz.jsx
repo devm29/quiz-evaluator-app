@@ -1,15 +1,15 @@
-import React, { useEffect, useMemo, useReducer } from "react";
+import { useEffect, useReducer, useState } from "react";
 import Countdown from "react-countdown";
 
 import { QUESTION_TIME_LIMIT_MS, QUIZ_TIME_LIMIT_MS } from "../constants/constants";
-import { QuizPost } from "../routes/api";
+import { QuizPost } from "../api";
 import { answeredCount, createInitialState, quizReducer } from "./quizReducer";
 
 import "../style/quiz.css";
 
 const Quiz = () => {
   const [state, dispatch] = useReducer(quizReducer, undefined, createInitialState);
-  const deadline = useMemo(() => Date.now() + QUIZ_TIME_LIMIT_MS, []);
+  const [deadline] = useState(() => Date.now() + QUIZ_TIME_LIMIT_MS);
 
   const { answers, draft, error, index, phase } = state;
   const total = answers.length;

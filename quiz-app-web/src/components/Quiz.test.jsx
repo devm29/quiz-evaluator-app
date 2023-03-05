@@ -1,15 +1,17 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-import Quiz from "./quiz";
+import Quiz from "./Quiz.jsx";
 import questions, { QUESTION_TIME_LIMIT_MS } from "../constants/constants";
-import { QuizPost } from "../routes/api";
+import { QuizPost } from "../api";
 
-jest.mock("react-countdown", () => ({ onComplete }) => (
-  <button type="button" onClick={onComplete}>
-    expire-countdown
-  </button>
-));
-jest.mock("../routes/api", () => ({ QuizPost: jest.fn() }));
+vi.mock("react-countdown", () => ({
+  default: ({ onComplete }) => (
+    <button type="button" onClick={onComplete}>
+      expire-countdown
+    </button>
+  ),
+}));
+vi.mock("../api", () => ({ QuizPost: vi.fn() }));
 
 const answerField = () => screen.getByLabelText("Your answer");
 const type = (value) => fireEvent.change(answerField(), { target: { value } });
@@ -25,7 +27,7 @@ function answerAll(answers) {
 
 describe("Quiz component", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     QuizPost.mockResolvedValue({ msg: "saved" });
   });
 
@@ -155,14 +157,14 @@ describe("Quiz component", () => {
 
   describe("per-question time limit", () => {
     beforeEach(() => {
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
 
     afterEach(() => {
       // Discard rather than run: firing a pending timer here would queue a
       // React update outside act().
-      jest.clearAllTimers();
-      jest.useRealTimers();
+      vi.clearAllTimers();
+      vi.useRealTimers();
     });
 
     it("auto-advances when a question's time runs out", () => {
@@ -170,7 +172,7 @@ describe("Quiz component", () => {
 
       type("slow answer");
       act(() => {
-        jest.advanceTimersByTime(QUESTION_TIME_LIMIT_MS);
+        vi.advanceTimersByTime(QUESTION_TIME_LIMIT_MS);
       });
 
       expect(screen.getByText(questions[1].questionText)).toBeInTheDocument();
@@ -184,11 +186,12 @@ describe("Quiz component", () => {
       // only scheduled once React has flushed the previous one.
       for (let index = 0; index < questions.length; index += 1) {
         act(() => {
-          jest.advanceTimersByTime(QUESTION_TIME_LIMIT_MS);
+          vi.advanceTimersByTime(QUESTION_TIME_LIMIT_MS);
         });
       }
 
-      await waitFor(() => expect(QuizPost).toHaveBeenCalledTimes(1));
+      // RTL's waitFor polls on timers, which are faked here.
+      expect(QuizPost).toHaveBeenCalledTimes(1);
       expect(QuizPost.mock.calls[0][0].question[0].answerText).toBe(
         "slow answer"
       );
@@ -200,11 +203,11 @@ describe("Quiz component", () => {
       render(<Quiz />);
 
       act(() => {
-        jest.advanceTimersByTime(QUESTION_TIME_LIMIT_MS - 1000);
+        vi.advanceTimersByTime(QUESTION_TIME_LIMIT_MS - 1000);
       });
       type("a late keystroke");
       act(() => {
-        jest.advanceTimersByTime(2000);
+        vi.advanceTimersByTime(2000);
       });
 
       expect(screen.getByText(questions[1].questionText)).toBeInTheDocument();

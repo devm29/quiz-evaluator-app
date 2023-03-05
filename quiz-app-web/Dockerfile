@@ -1,15 +1,13 @@
 # syntax=docker/dockerfile:1
 
 # ---------------------------------------------------------------------------
-# Stage 1 — build the static bundle. Create React App inlines REACT_APP_* at
-# build time, so the API base URL is a build argument, not a runtime env var.
+# Stage 1 — build the static bundle. Vite inlines VITE_* at build time, so the
+# API base URL is a build argument, not a runtime env var.
 # ---------------------------------------------------------------------------
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
-ARG REACT_APP_API_BASEURL=http://localhost:8221/
-ENV REACT_APP_API_BASEURL=${REACT_APP_API_BASEURL} \
-    CI=true \
-    GENERATE_SOURCEMAP=false
+ARG VITE_API_BASEURL=http://localhost:8221/
+ENV VITE_API_BASEURL=${VITE_API_BASEURL}
 
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -20,10 +18,10 @@ RUN npm run build
 # ---------------------------------------------------------------------------
 # Stage 2 — serve. Only the built assets and an nginx config ship.
 # ---------------------------------------------------------------------------
-FROM nginx:1.27-alpine AS runtime
+FROM nginx:1.30-alpine AS runtime
 
 COPY nginx.conf /etc/nginx/nginx.conf
-COPY --from=builder /app/build /usr/share/nginx/html
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 # nginx:alpine already defines the `nginx` user; give it the directories it
 # needs so the server never runs as root.

@@ -19,9 +19,9 @@ const NETWORK_ERROR =
   "Unable to reach the quiz API. Check that it is running and try again.";
 
 function apiBaseUrl() {
-  const raw = process.env.REACT_APP_API_BASEURL;
+  const raw = import.meta.env.VITE_API_BASEURL;
   if (!raw) {
-    throw new QuizApiError("REACT_APP_API_BASEURL is not configured");
+    throw new QuizApiError("VITE_API_BASEURL is not configured");
   }
   // Tolerate a base URL given with or without a trailing slash.
   return raw.endsWith("/") ? raw : `${raw}/`;
@@ -46,12 +46,10 @@ export async function QuizPost(quiz) {
     });
   } catch {
     // fetch only rejects on a transport failure; a 4xx/5xx resolves normally.
-    // The previous implementation wrapped both in one try block and rethrew
-    // anything that was an Error, which made this message unreachable.
     throw new QuizApiError(NETWORK_ERROR);
   }
 
-  let payload = null;
+  let payload;
   try {
     payload = await response.json();
   } catch {

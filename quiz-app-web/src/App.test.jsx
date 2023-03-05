@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
 
-import App from "./App";
+import App from "./App.jsx";
 import questions from "./constants/constants";
 
-jest.mock("./routes/api", () => ({ QuizPost: jest.fn() }));
+vi.mock("./api", () => ({ QuizPost: vi.fn() }));
 
-test("routes / to the quiz and renders the first question", () => {
+test("renders the quiz on its first question", () => {
   render(<App />);
 
   expect(screen.getByText(questions[0].questionText)).toBeInTheDocument();
