@@ -48,6 +48,16 @@ class QuizSubmissionSerializerTests(SimpleTestCase):
         self.assertEqual(len(submission.answers), 1)
         self.assertEqual(submission.answers[0].question_text, "Q1")
 
+    def test_only_the_question_list_is_required(self):
+        serializer = QuizSubmissionSerializer(data={"question": VALID["question"]})
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+        submission = serializer.to_submission()
+
+        self.assertEqual(submission.submitted_by, "")
+        self.assertEqual(submission.evaluated_by, "")
+        self.assertEqual(submission.reported_score, 0)
+
     def test_question_texts_are_deduplicated_in_submission_order(self):
         serializer = QuizSubmissionSerializer(
             data={
@@ -104,7 +114,15 @@ class QuizSubmissionSerializerTests(SimpleTestCase):
 
 class SummariseErrorsTests(SimpleTestCase):
     def test_missing_fields_wins_over_more_specific_messages(self):
-        serializer = QuizSubmissionSerializer(data={"question": []})
+        serializer = QuizSubmissionSerializer(
+            data={"question": [{"questionText": ""}], "submittedBy": None}
+        )
+        serializer.is_valid()
+
+        self.assertEqual(summarise_errors(serializer.errors), MISSING_FIELDS)
+
+    def test_a_missing_question_list_is_a_missing_field(self):
+        serializer = QuizSubmissionSerializer(data={})
         serializer.is_valid()
 
         self.assertEqual(summarise_errors(serializer.errors), MISSING_FIELDS)

@@ -30,7 +30,7 @@ function apiBaseUrl() {
 /**
  * POST a completed quiz.
  *
- * @param {{question: Array, submittedBy: string, evaluatedBy: string, score: number}} quiz
+ * @param {{question: Array, submittedBy: string}} quiz
  * @returns {Promise<object>} the parsed response body
  * @throws {QuizApiError} on a non-2xx response or a transport failure
  */

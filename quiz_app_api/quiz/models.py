@@ -56,7 +56,7 @@ class Quiz(models.Model):
     submitted_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
-        # Newest first: every read path (admin, the list endpoint) wants the
+        # Newest first: the admin, the only read path, wants the
         # most recent submissions, and the index on submitted_at keeps that
         # ordering cheap as the table grows.
         ordering = ["-submitted_at", "-id"]

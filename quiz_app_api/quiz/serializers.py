@@ -69,20 +69,25 @@ class QuizSubmissionSerializer(serializers.Serializer):
 
     submittedBy = serializers.CharField(
         max_length=150,
+        required=False,
         allow_blank=True,
-        error_messages={"required": MISSING_FIELDS, "null": MISSING_FIELDS},
+        default="",
+        error_messages={"null": MISSING_FIELDS},
     )
     evaluatedBy = serializers.CharField(
         max_length=150,
+        required=False,
         allow_blank=True,
-        error_messages={"required": MISSING_FIELDS, "null": MISSING_FIELDS},
+        default="",
+        error_messages={"null": MISSING_FIELDS},
     )
-    # The published contract sends score as a JSON string ("0") in some
-    # clients and as a number in others; IntegerField accepts both and — the
-    # point of the change — rejects "abc" with a 400 instead of letting it
-    # blow up inside the ORM as a 500.
+    # Only the client-reported strategy reads this, so it is optional. Some
+    # clients send it as a JSON string ("0"); IntegerField accepts both and
+    # rejects "abc" with a 400 instead of letting it reach the ORM as a 500.
     score = serializers.IntegerField(
-        error_messages={"required": MISSING_FIELDS, "null": MISSING_FIELDS}
+        required=False,
+        default=0,
+        error_messages={"null": MISSING_FIELDS},
     )
     question = serializers.ListField(
         child=AnswerSerializer(),

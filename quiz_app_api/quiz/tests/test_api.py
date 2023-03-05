@@ -59,6 +59,7 @@ class SubmitQuizApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["msg"], "Question text is required")
 
+    @override_settings(QUIZ_SCORING_STRATEGY="client-reported")
     def test_response_reports_created_quiz_id_and_score(self):
         response = self.client.post(self.url, self.valid_payload, format="json")
 
@@ -110,6 +111,7 @@ class SubmitQuizApiTests(APITestCase):
         self.assertIn("score", response.data["errors"])
         self.assertFalse(Quiz.objects.exists())
 
+    @override_settings(QUIZ_SCORING_STRATEGY="client-reported")
     def test_numeric_string_score_is_accepted(self):
         """The API README documents score as a JSON string."""
         response = self.client.post(
@@ -166,6 +168,70 @@ class SubmitQuizApiTests(APITestCase):
         self.assertEqual(Question.objects.count(), 2)
         self.assertEqual(Quiz.objects.count(), 2)
         self.assertEqual(QuizAnswer.objects.count(), 4)
+
+
+class ServerMarkingTests(APITestCase):
+    """What the browser actually sends: no score, no evaluator."""
+
+    def setUp(self):
+        cache.clear()
+        Question.objects.create(question_text="Capital of Japan?", answer_text="Tokyo")
+        Question.objects.create(question_text="Two plus two?", answer_text="4")
+        self.url = reverse("submit_quiz")
+
+    def post(self, **extra):
+        body = {
+            "submittedBy": "Sam",
+            "question": [
+                {"questionText": "Capital of Japan?", "answerText": "tokyo"},
+                {"questionText": "Two plus two?", "answerText": "5"},
+            ],
+            **extra,
+        }
+        return self.client.post(self.url, {"data": body}, format="json")
+
+    def test_browser_submission_is_marked_by_the_server(self):
+        """Regression: the default strategy stored the browser's literal 0."""
+        response = self.post()
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["score"], 1)
+        quiz = Quiz.objects.get()
+        self.assertEqual(quiz.score, 1)
+        self.assertEqual(quiz.submitted_by, "Sam")
+
+    def test_server_marking_is_recorded_as_the_evaluator(self):
+        self.post()
+
+        self.assertEqual(Quiz.objects.get().evaluated_by, "exact-match")
+
+    def test_an_explicit_evaluator_is_kept(self):
+        self.post(evaluatedBy="Ms Rivera")
+
+        self.assertEqual(Quiz.objects.get().evaluated_by, "Ms Rivera")
+
+    def test_a_client_score_cannot_inflate_the_mark(self):
+        response = self.post(score=99)
+
+        self.assertEqual(response.data["score"], 1)
+
+    def test_names_and_score_are_optional(self):
+        response = self.client.post(
+            self.url,
+            {"question": [{"questionText": "Two plus two?", "answerText": "4"}]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        quiz = Quiz.objects.get()
+        self.assertEqual((quiz.submitted_by, quiz.score), ("", 1))
+
+    @override_settings(QUIZ_SCORING_STRATEGY="client-reported")
+    def test_client_reported_marking_leaves_the_evaluator_alone(self):
+        self.post(score=2)
+
+        quiz = Quiz.objects.get()
+        self.assertEqual((quiz.score, quiz.evaluated_by), (2, ""))
 
 
 class HealthCheckApiTests(APITestCase):

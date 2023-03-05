@@ -36,12 +36,8 @@ const Quiz = () => {
       return undefined;
     }
     let cancelled = false;
-    QuizPost({
-      question: answers,
-      submittedBy: "",
-      evaluatedBy: "",
-      score: 0,
-    })
+    // No score: the API marks the answers against its own catalogue.
+    QuizPost({ question: answers, submittedBy: "" })
       .then(() => {
         if (!cancelled) {
           dispatch({ type: "submitted" });

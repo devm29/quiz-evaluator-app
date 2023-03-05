@@ -138,8 +138,9 @@ REST_FRAMEWORK = {
 # unbounded write loop. Five questions is the shipped quiz; 100 is head-room.
 QUIZ_MAX_QUESTIONS_PER_SUBMISSION = env_int("QUIZ_MAX_QUESTIONS_PER_SUBMISSION", 100)
 
-# Which scoring strategy grades a submission. See quiz/scoring.py.
-QUIZ_SCORING_STRATEGY = env_str("QUIZ_SCORING_STRATEGY", "client-reported")
+# Which scoring strategy grades a submission. See quiz/scoring.py. The browser
+# client never computes a score, so the server marks against the catalogue.
+QUIZ_SCORING_STRATEGY = env_str("QUIZ_SCORING_STRATEGY", "exact-match")
 
 # --------------------------------------------------------------------------
 # Auth / i18n / static

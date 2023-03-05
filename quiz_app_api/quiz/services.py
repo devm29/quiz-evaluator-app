@@ -14,7 +14,7 @@ from django.db import connections, router, transaction
 
 from quiz.dto import QuizSubmission
 from quiz.models import Question, Quiz, QuizAnswer
-from quiz.scoring import get_strategy
+from quiz.scoring import ClientReportedScoring, get_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +36,14 @@ def save_submission(submission: QuizSubmission) -> Quiz:
     strategy = get_strategy(settings.QUIZ_SCORING_STRATEGY)
     score = strategy.score(submission, reference_answers)
 
+    # When the server did the marking, say so rather than leave it blank.
+    evaluated_by = submission.evaluated_by
+    if not evaluated_by and strategy.name != ClientReportedScoring.name:
+        evaluated_by = strategy.name
+
     quiz = Quiz.objects.create(
         submitted_by=submission.submitted_by,
-        evaluated_by=submission.evaluated_by,
+        evaluated_by=evaluated_by,
         score=score,
     )
 

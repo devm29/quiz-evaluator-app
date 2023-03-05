@@ -9,8 +9,9 @@ Adding a new way to grade is: write a class with a ``name`` and a ``score``
 method, decorate it with :func:`register_strategy`, import it here. No change
 to the view, the serializer or the service.
 
-The default remains ``client-reported`` so the wire behaviour of the API is
-unchanged unless an operator opts in.
+The default is ``exact-match``: the browser client never computes a score,
+so trusting it stored 0 for every real attempt. ``client-reported`` remains for
+callers that mark their own quizzes.
 """
 
 from __future__ import annotations
@@ -71,7 +72,7 @@ def get_strategy(name: str) -> ScoringStrategy:
 
 @register_strategy
 class ClientReportedScoring:
-    """Trust the score the client sent. The historical behaviour."""
+    """Trust the score the client sent."""
 
     name = "client-reported"
 

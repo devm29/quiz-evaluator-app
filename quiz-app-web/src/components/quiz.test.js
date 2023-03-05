@@ -39,8 +39,6 @@ describe("Quiz component", () => {
     expect(QuizPost).toHaveBeenCalledTimes(1);
     expect(QuizPost).toHaveBeenCalledWith({
       submittedBy: "",
-      evaluatedBy: "",
-      score: 0,
       question: questions.map((question, index) => ({
         questionText: question.questionText,
         answerText: `answer-${index}`,
