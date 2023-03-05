@@ -4,7 +4,7 @@
 # Stage 1 — build wheels. Keeps compilers and pip's build machinery out of the
 # image that actually ships.
 # ---------------------------------------------------------------------------
-FROM python:3.11-slim AS builder
+FROM python:3.13-slim AS builder
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
@@ -16,7 +16,7 @@ RUN pip wheel --wheel-dir /wheels -r requirements.txt
 # ---------------------------------------------------------------------------
 # Stage 2 — runtime.
 # ---------------------------------------------------------------------------
-FROM python:3.11-slim AS runtime
+FROM python:3.13-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

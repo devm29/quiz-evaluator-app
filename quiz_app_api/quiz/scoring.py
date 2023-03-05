@@ -42,7 +42,7 @@ _REGISTRY: dict[str, ScoringStrategy] = {}
 
 
 def register_strategy(
-    cls: Callable[[], ScoringStrategy]
+    cls: Callable[[], ScoringStrategy],
 ) -> Callable[[], ScoringStrategy]:
     """Class decorator that adds a strategy to the registry by its ``name``."""
     instance = cls()

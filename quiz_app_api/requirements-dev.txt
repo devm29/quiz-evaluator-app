@@ -1,5 +1,5 @@
 -r requirements.txt
 
 # Formatting and linting. Not installed in the runtime container image.
-black==24.10.0
-ruff==0.8.6
+black==26.10.1
+ruff==0.17.4

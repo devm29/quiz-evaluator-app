@@ -1,7 +1,7 @@
 # Runtime dependencies. Transitive packages are resolved by pip; only direct
 # dependencies are pinned here so an upgrade is a one-line, reviewable change.
-Django==4.2.20
-djangorestframework==3.14.0
-django-cors-headers==4.3.1
-gunicorn==21.2.0
-whitenoise==6.8.2
+Django==5.2.19
+djangorestframework==3.18.3
+django-cors-headers==4.9.0
+gunicorn==26.2.0
+whitenoise==6.12.0
