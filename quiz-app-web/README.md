@@ -1,46 +1,47 @@
 # quiz-app-web
 
-The Create React App client. Full documentation — architecture, screenshots,
-design notes — lives in the [repository README](../README.md); this file is the
+The Pocket Trivia client: React 19, built with Vite and tested with Vitest. The
+[repository README](../README.md) covers the whole project; this is the
 per-service quick reference.
 
 ## Requirements
 
-Node 18 or newer.
+Node 22.12 or newer (`.nvmrc` pins 22).
 
 ## Run it locally
 
 The API must be running first (see [`../quiz_app_api`](../quiz_app_api)).
 
 ```bash
-npm install
-cp .env.example .env        # sets REACT_APP_API_BASEURL
-PORT=8220 npm start
+npm ci
+cp .env.example .env        # sets VITE_API_BASEURL
+npm run dev                 # http://localhost:8220
 ```
 
-The app is then on <http://localhost:8220>.
-
 ```bash
-npm run test:ci   # single run, no watcher
-npm run lint      # eslint, zero warnings tolerated
-npm run build     # production bundle
+npm run test:ci   # single run
+npm test          # watch mode
+npm run lint      # ESLint, zero warnings allowed
+npm run build     # production bundle in dist/
+npm run preview   # serve dist/ on 8220
 ```
 
 ## Configuration
 
-| Variable | Required | Default | Purpose |
-| --- | --- | --- | --- |
-| `REACT_APP_API_BASEURL` | **Yes** | none | Base URL of the API, with or without a trailing slash. Create React App inlines it at **build** time, so a change needs a rebuild or a restart of `npm start`, not a page refresh. Unset, the app fails loudly rather than posting to a wrong host. |
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `VITE_API_BASEURL` | Yes | Base URL of the API, with or without a trailing slash. Vite inlines it at build time, so a change needs a rebuild or a restart of `npm run dev`. Unset, the app shows a configuration error instead of calling a wrong host. |
 
 ## Layout
 
 ```
 src/
+├── api.js                 # fetchQuestions, submitQuiz, QuizApiError
 ├── components/
-│   ├── quiz.js          # rendering and effects only
-│   └── quizReducer.js   # every state transition, as one pure function
-├── constants/           # the five questions and the time limits
-└── routes/
-    ├── api.js           # QuizPost + QuizApiError
-    └── routes.js
+│   ├── Quiz.jsx           # rendering and effects only
+│   ├── quizReducer.js     # every state transition, as one pure function
+│   └── clock.js           # m:ss formatting for the countdown
+├── constants/constants.js # the per-question time limit
+├── style/quiz.css         # palette and type tokens on :root
+└── test/questions.js      # API-shaped fixture for the tests
 ```

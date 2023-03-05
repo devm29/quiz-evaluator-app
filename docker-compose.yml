@@ -1,23 +1,26 @@
 # Brings up the whole stack with `docker compose up --build`.
 # The API migrates and seeds itself on boot, so there is nothing to run by hand.
 #
-# Host ports: 8220 = web UI, 8221 = API.
+# Host ports: 8220 = web UI, 8221 = API. Values below can be overridden from
+# a .env file next to this one; see .env.example.
+
+name: pocket-trivia
 
 services:
   api:
     build:
       context: ./quiz_app_api
-    image: quiz-api
+    image: pocket-trivia-api
     environment:
-      # Generated once here so signed values survive a container restart.
-      # Replace with a real secret for anything beyond local use.
-      DJANGO_SECRET_KEY: local-development-only-do-not-reuse
+      # A fixed key so signed values survive a container restart. Set your own
+      # in .env for anything beyond local use.
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-development-only-do-not-reuse}
       DJANGO_DEBUG: "false"
       DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,api,[::1]"
       DJANGO_CORS_ALLOWED_ORIGINS: "http://localhost:8220,http://127.0.0.1:8220"
       DJANGO_SQLITE_PATH: /data/db.sqlite3
-      DJANGO_LOG_LEVEL: INFO
-      QUIZ_SCORING_STRATEGY: exact-match
+      DJANGO_LOG_LEVEL: ${DJANGO_LOG_LEVEL:-INFO}
+      QUIZ_SCORING_STRATEGY: ${QUIZ_SCORING_STRATEGY:-exact-match}
     volumes:
       - quiz-data:/data
     ports:
@@ -30,7 +33,7 @@ services:
       args:
         # Baked into the bundle: the browser, not the container, calls the API.
         VITE_API_BASEURL: http://localhost:8221/
-    image: quiz-web
+    image: pocket-trivia-web
     depends_on:
       api:
         condition: service_healthy
