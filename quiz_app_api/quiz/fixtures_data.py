@@ -11,11 +11,11 @@ That is called out in the README's limitations.
 from __future__ import annotations
 
 SEED_QUESTIONS: tuple[tuple[str, str], ...] = (
-    ("Is Milkyway the biggest galaxy in Universe?", "No"),
-    ("Cactus is a flower?(Yes/No)", "No"),
-    ("Is Tokyo the capital of Japan?(Yes/No)", "Yes"),
-    ("Is China the most populated country in the world?(Yes/No)", "No"),
-    ("Algae is a plant?(Yes/No)", "No"),
+    ("Which planet is known as the Red Planet?", "Mars"),
+    ("What is the chemical symbol for gold?", "Au"),
+    ("How many sides does a hexagon have?", "6|six"),
+    ("What is the largest ocean on Earth?", "Pacific|Pacific Ocean"),
+    ("In which city is the Colosseum?", "Rome"),
 )
 
 # Sample submissions so a freshly booted stack has something to look at in the
@@ -24,16 +24,16 @@ SEED_SUBMISSIONS: tuple[dict, ...] = (
     {
         "submitted_by": "Ada Lovelace",
         "evaluated_by": "auto",
-        "answers": ("No", "No", "Yes", "No", "No"),
+        "answers": ("Mars", "Au", "6", "Pacific Ocean", "Rome"),
     },
     {
         "submitted_by": "Grace Hopper",
         "evaluated_by": "auto",
-        "answers": ("Yes", "No", "Yes", "Yes", "No"),
+        "answers": ("Mars", "Ag", "six", "Atlantic", "Rome"),
     },
     {
         "submitted_by": "Alan Turing",
         "evaluated_by": "auto",
-        "answers": ("No", "Yes", "Yes", "No", "Maybe"),
+        "answers": ("Jupiter", "Au", "6", "pacific", "Athens"),
     },
 )

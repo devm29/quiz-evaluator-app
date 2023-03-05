@@ -7,6 +7,7 @@ from quiz.scoring import (
     ClientReportedScoring,
     ExactMatchScoring,
     ScoringStrategy,
+    accepted_answers,
     available_strategies,
     get_strategy,
     register_strategy,
@@ -102,3 +103,33 @@ class ExactMatchScoringTests(SimpleTestCase):
         )
 
         self.assertEqual(score, 0)
+
+    def test_any_listed_alternative_scores(self):
+        strategy = ExactMatchScoring()
+        reference = {"Sides on a hexagon?": "6|six", "Largest ocean?": "Pacific"}
+
+        result = strategy.score(
+            submission(("Sides on a hexagon?", " Six "), ("Largest ocean?", "pacific")),
+            reference,
+        )
+
+        self.assertEqual(result, 2)
+
+    def test_an_empty_answer_never_matches_a_stray_separator(self):
+        strategy = ExactMatchScoring()
+
+        result = strategy.score(submission(("Q?", "")), {"Q?": "yes||"})
+
+        self.assertEqual(result, 0)
+
+
+class AcceptedAnswersTests(SimpleTestCase):
+    def test_splits_strips_and_casefolds(self):
+        self.assertEqual(
+            accepted_answers(" Pacific | Pacific Ocean "),
+            frozenset({"pacific", "pacific ocean"}),
+        )
+
+    def test_blank_reference_accepts_nothing(self):
+        self.assertEqual(accepted_answers(""), frozenset())
+        self.assertEqual(accepted_answers(None), frozenset())

@@ -86,9 +86,10 @@ class ClientReportedScoring:
 class ExactMatchScoring:
     """One point per answer that matches the stored reference answer.
 
-    Comparison is case-insensitive and ignores surrounding whitespace.
-    Questions with no reference answer on record score nothing — an
-    un-seeded catalogue therefore grades everything as zero rather than
+    A reference answer may list accepted alternatives separated by ``|``
+    (``"6|six"``). Comparison is case-insensitive and ignores surrounding
+    whitespace. Questions with no reference answer on record score nothing,
+    so an un-seeded catalogue grades everything as zero rather than
     silently awarding marks.
     """
 
@@ -99,9 +100,16 @@ class ExactMatchScoring:
     ) -> int:
         total = 0
         for answer in submission.answers:
-            expected = (reference_answers.get(answer.question_text) or "").strip()
-            if not expected:
-                continue
-            if answer.answer_text.strip().casefold() == expected.casefold():
+            accepted = accepted_answers(reference_answers.get(answer.question_text))
+            if answer.answer_text.strip().casefold() in accepted:
                 total += 1
         return total
+
+
+def accepted_answers(reference: str | None) -> frozenset[str]:
+    """Normalised alternatives from a ``|``-separated reference answer."""
+    if not reference:
+        return frozenset()
+    return frozenset(
+        option.strip().casefold() for option in reference.split("|") if option.strip()
+    )

@@ -27,6 +27,14 @@ class SeedQuizCommandTests(TestCase):
         self.assertEqual(Quiz.objects.count(), len(SEED_SUBMISSIONS))
         self.assertTrue(Quiz.objects.filter(score__gt=0).exists())
 
+    def test_sample_scores_follow_the_reference_answers(self):
+        self.seed()
+
+        scores = dict(Quiz.objects.values_list("submitted_by", "score"))
+        self.assertEqual(
+            scores, {"Ada Lovelace": 5, "Grace Hopper": 3, "Alan Turing": 3}
+        )
+
     def test_is_idempotent(self):
         self.seed()
         output = self.seed()

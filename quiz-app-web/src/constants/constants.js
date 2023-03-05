@@ -6,14 +6,11 @@
  * what the reference answers are seeded from.
  */
 const questions = [
-  { questionText: "Is Milkyway the biggest galaxy in Universe?", answerText: "" },
-  { questionText: "Cactus is a flower?(Yes/No)", answerText: "" },
-  { questionText: "Is Tokyo the capital of Japan?(Yes/No)", answerText: "" },
-  {
-    questionText: "Is China the most populated country in the world?(Yes/No)",
-    answerText: "",
-  },
-  { questionText: "Algae is a plant?(Yes/No)", answerText: "" },
+  { questionText: "Which planet is known as the Red Planet?", answerText: "" },
+  { questionText: "What is the chemical symbol for gold?", answerText: "" },
+  { questionText: "How many sides does a hexagon have?", answerText: "" },
+  { questionText: "What is the largest ocean on Earth?", answerText: "" },
+  { questionText: "In which city is the Colosseum?", answerText: "" },
 ];
 
 /** Milliseconds a candidate gets on any single question before it auto-advances. */

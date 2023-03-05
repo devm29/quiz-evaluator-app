@@ -4,7 +4,8 @@ Three tables:
 
 * ``Question``  — the catalogue of question text, de-duplicated by text so the
   same wording is never stored twice. ``answer_text`` holds the reference
-  answer and is what the ``exact-match`` scoring strategy grades against.
+  answer (alternatives separated by ``|``) and is what the ``exact-match``
+  scoring strategy grades against.
 * ``QuizAnswer`` — one candidate's answer to one question.
 * ``Quiz``      — one submitted attempt, linking the answers it contains.
 """
