@@ -1,11 +1,8 @@
 """The shipped quiz: the questions the React client asks, with reference answers.
 
 This lives in the repository rather than in a JSON fixture so that the seed
-command and the tests share exactly one definition of "the quiz".
-
-Note the duplication with ``quiz-app-web/src/constants/constants.js``: the API
-has no endpoint that serves questions, so the client carries its own copy.
-That is called out in the README's limitations.
+command and the tests share exactly one definition of "the quiz". The client
+fetches the questions from ``GET /questions/``; it never sees the answers.
 """
 
 from __future__ import annotations

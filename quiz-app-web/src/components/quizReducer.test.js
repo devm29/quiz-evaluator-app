@@ -3,30 +3,78 @@ import {
   createInitialState,
   quizReducer,
 } from "./quizReducer";
-import questions from "../constants/constants";
+import { QUESTION_TIME_LIMIT_MS } from "../constants/constants";
+import { QUESTIONS as questions } from "../test/questions";
 
+const NOW = 1_700_000_000_000;
 const draft = (state, value) => quizReducer(state, { type: "draft", value });
 const advance = (state) => quizReducer(state, { type: "advance" });
+const loaded = () =>
+  quizReducer(createInitialState(), { type: "loaded", questions, now: NOW });
 
 describe("quizReducer", () => {
-  it("starts on the first question with no answers recorded", () => {
+  it("starts out loading with nothing to answer", () => {
     const state = createInitialState();
+
+    expect(state.phase).toBe("loading");
+    expect(state.answers).toEqual([]);
+    expect(answeredCount(state)).toBe(0);
+  });
+
+  it("starts on the first question once the questions arrive", () => {
+    const state = loaded();
 
     expect(state.index).toBe(0);
     expect(state.phase).toBe("answering");
-    expect(state.answers).toHaveLength(questions.length);
-    expect(state.answers.every((answer) => answer.answerText === "")).toBe(true);
+    expect(state.answers).toEqual(
+      questions.map(({ questionText }) => ({ questionText, answerText: "" }))
+    );
   });
 
-  it("does not mutate the shared question constants", () => {
-    const state = advance(draft(createInitialState(), "mutated"));
+  it("gives the whole attempt one time limit per question", () => {
+    expect(loaded().deadline).toBe(NOW + questions.length * QUESTION_TIME_LIMIT_MS);
+  });
+
+  it("treats an empty question list as unavailable", () => {
+    const state = quizReducer(createInitialState(), {
+      type: "loaded",
+      questions: [],
+      now: NOW,
+    });
+
+    expect(state.phase).toBe("unavailable");
+    expect(state.error).toMatch(/no questions/);
+  });
+
+  it("records a failed load and starts over on reload", () => {
+    const failed = quizReducer(createInitialState(), {
+      type: "loadFailed",
+      message: "offline",
+    });
+    expect(failed).toMatchObject({ phase: "unavailable", error: "offline" });
+
+    expect(quizReducer(failed, { type: "reload" })).toEqual(createInitialState());
+  });
+
+  it("ignores a late load result once the quiz has started", () => {
+    const state = loaded();
+
+    expect(quizReducer(state, { type: "loadFailed", message: "x" })).toBe(state);
+    expect(quizReducer(state, { type: "loaded", questions: [], now: NOW })).toBe(
+      state
+    );
+    expect(quizReducer(state, { type: "reload" })).toBe(state);
+  });
+
+  it("does not keep a reference to the fetched question objects", () => {
+    const state = advance(draft(loaded(), "mutated"));
 
     expect(state.answers[0].answerText).toBe("mutated");
-    expect(questions[0].answerText).toBe("");
+    expect(questions[0]).not.toHaveProperty("answerText");
   });
 
   it("records the draft against the current question and clears it", () => {
-    const state = advance(draft(createInitialState(), "my answer"));
+    const state = advance(draft(loaded(), "my answer"));
 
     expect(state.answers[0].answerText).toBe("my answer");
     expect(state.index).toBe(1);
@@ -34,7 +82,7 @@ describe("quizReducer", () => {
   });
 
   it("moves to submitting after the last question", () => {
-    let state = createInitialState();
+    let state = loaded();
     for (let i = 0; i < questions.length; i += 1) {
       state = advance(draft(state, `a${i}`));
     }
@@ -46,7 +94,7 @@ describe("quizReducer", () => {
   });
 
   it("advancing while submitting is a no-op", () => {
-    let state = createInitialState();
+    let state = loaded();
     for (let i = 0; i < questions.length; i += 1) {
       state = advance(draft(state, "x"));
     }
@@ -56,7 +104,7 @@ describe("quizReducer", () => {
   });
 
   it("finish submits partial answers from the current question", () => {
-    let state = advance(draft(createInitialState(), "first"));
+    let state = advance(draft(loaded(), "first"));
     state = draft(state, "second, unsent");
     state = quizReducer(state, { type: "finish" });
 
@@ -67,7 +115,7 @@ describe("quizReducer", () => {
   });
 
   it("finish after submission is a no-op", () => {
-    const submitted = quizReducer(createInitialState(), { type: "submitted" });
+    const submitted = quizReducer(loaded(), { type: "submitted" });
 
     expect(quizReducer(submitted, { type: "finish" })).toBe(submitted);
   });
@@ -86,7 +134,7 @@ describe("quizReducer", () => {
   });
 
   it("retry only applies to a failed submission", () => {
-    const initial = createInitialState();
+    const initial = loaded();
 
     expect(quizReducer(initial, { type: "retry" })).toBe(initial);
   });
@@ -100,13 +148,13 @@ describe("quizReducer", () => {
 
 describe("answeredCount", () => {
   it("counts questions left behind while answering", () => {
-    const state = advance(draft(createInitialState(), "a"));
+    const state = advance(draft(loaded(), "a"));
 
     expect(answeredCount(state)).toBe(1);
   });
 
   it("counts every question once the quiz has left the answering phase", () => {
-    const state = quizReducer(createInitialState(), { type: "finish" });
+    const state = quizReducer(loaded(), { type: "finish" });
 
     expect(answeredCount(state)).toBe(questions.length);
   });

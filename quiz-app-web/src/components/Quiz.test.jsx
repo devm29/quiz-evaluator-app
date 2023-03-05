@@ -1,8 +1,9 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import Quiz from "./Quiz.jsx";
-import questions, { QUESTION_TIME_LIMIT_MS } from "../constants/constants";
-import { QuizPost } from "../api";
+import { QUESTION_TIME_LIMIT_MS } from "../constants/constants";
+import { fetchQuestions, submitQuiz } from "../api";
+import { QUESTIONS as questions } from "../test/questions";
 
 vi.mock("react-countdown", () => ({
   default: ({ onComplete }) => (
@@ -11,12 +12,19 @@ vi.mock("react-countdown", () => ({
     </button>
   ),
 }));
-vi.mock("../api", () => ({ QuizPost: vi.fn() }));
+vi.mock("../api", () => ({ fetchQuestions: vi.fn(), submitQuiz: vi.fn() }));
 
 const answerField = () => screen.getByLabelText("Your answer");
 const type = (value) => fireEvent.change(answerField(), { target: { value } });
 const clickButton = (name) =>
   fireEvent.click(screen.getByRole("button", { name }));
+
+// Resolves the mocked questions fetch without polling, so it also works
+// while timers are faked.
+async function renderQuiz() {
+  render(<Quiz />);
+  await act(async () => {});
+}
 
 function answerAll(answers) {
   answers.forEach((answer, index) => {
@@ -25,21 +33,76 @@ function answerAll(answers) {
   });
 }
 
+describe("loading the quiz", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("shows a loading state until the questions arrive", async () => {
+    let resolveQuestions;
+    fetchQuestions.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveQuestions = resolve;
+      })
+    );
+    render(<Quiz />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading the questions");
+    expect(screen.queryByLabelText("Your answer")).not.toBeInTheDocument();
+
+    await act(async () => resolveQuestions(questions));
+
+    expect(screen.getByText(questions[0].questionText)).toBeInTheDocument();
+  });
+
+  it("explains a failed load and loads again on request", async () => {
+    fetchQuestions
+      .mockRejectedValueOnce(new Error("Unable to reach the quiz API."))
+      .mockResolvedValueOnce(questions);
+    await renderQuiz();
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Unable to reach the quiz API.");
+
+    clickButton("Try again");
+    await act(async () => {});
+
+    expect(fetchQuestions).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(questions[0].questionText)).toBeInTheDocument();
+  });
+
+  it("says so when the API has no questions", async () => {
+    fetchQuestions.mockResolvedValueOnce([]);
+    await renderQuiz();
+
+    expect(screen.getByRole("alert")).toHaveTextContent("There are no questions yet");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuemax", "0");
+  });
+
+  it("asks the questions in the order the API sent them", async () => {
+    fetchQuestions.mockResolvedValueOnce([...questions].reverse());
+    await renderQuiz();
+
+    expect(screen.getByText(questions.at(-1).questionText)).toBeInTheDocument();
+    expect(screen.getByText(`of ${questions.length}`, { exact: false })).toBeInTheDocument();
+  });
+});
+
 describe("Quiz component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    QuizPost.mockResolvedValue({ msg: "saved" });
+    fetchQuestions.mockResolvedValue(questions);
+    submitQuiz.mockResolvedValue({ msg: "saved" });
   });
 
   it("walks through every question and submits the collected answers", async () => {
-    render(<Quiz />);
+    await renderQuiz();
     expect(screen.getByText(questions[0].questionText)).toBeInTheDocument();
 
     answerAll(questions.map((_, index) => `answer-${index}`));
 
     await screen.findByText("Thank you for taking this quiz.");
-    expect(QuizPost).toHaveBeenCalledTimes(1);
-    expect(QuizPost).toHaveBeenCalledWith({
+    expect(submitQuiz).toHaveBeenCalledTimes(1);
+    expect(submitQuiz).toHaveBeenCalledWith({
       submittedBy: "",
       question: questions.map((question, index) => ({
         questionText: question.questionText,
@@ -48,8 +111,8 @@ describe("Quiz component", () => {
     });
   });
 
-  it("shows progress through the quiz", () => {
-    render(<Quiz />);
+  it("shows progress through the quiz", async () => {
+    await renderQuiz();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
 
     clickButton("Next");
@@ -58,8 +121,8 @@ describe("Quiz component", () => {
     expect(screen.getByText(questions[1].questionText)).toBeInTheDocument();
   });
 
-  it("clears the input between questions", () => {
-    render(<Quiz />);
+  it("clears the input between questions", async () => {
+    await renderQuiz();
 
     type("first answer");
     clickButton("Next");
@@ -67,8 +130,8 @@ describe("Quiz component", () => {
     expect(answerField()).toHaveValue("");
   });
 
-  it("advances on Enter as well as the button", () => {
-    render(<Quiz />);
+  it("advances on Enter as well as the button", async () => {
+    await renderQuiz();
 
     type("typed");
     fireEvent.keyDown(answerField(), { key: "Enter" });
@@ -76,8 +139,8 @@ describe("Quiz component", () => {
     expect(screen.getByText(questions[1].questionText)).toBeInTheDocument();
   });
 
-  it("labels the final question's control Submit", () => {
-    render(<Quiz />);
+  it("labels the final question's control Submit", async () => {
+    await renderQuiz();
 
     for (let index = 0; index < questions.length - 1; index += 1) {
       clickButton("Next");
@@ -87,8 +150,8 @@ describe("Quiz component", () => {
   });
 
   it("surfaces the API error and lets the candidate retry", async () => {
-    QuizPost.mockRejectedValueOnce(new Error("Missing required fields"));
-    render(<Quiz />);
+    submitQuiz.mockRejectedValueOnce(new Error("Missing required fields"));
+    await renderQuiz();
 
     answerAll(questions.map(() => "x"));
 
@@ -104,18 +167,18 @@ describe("Quiz component", () => {
     clickButton("Try again");
 
     await screen.findByText("Thank you for taking this quiz.");
-    expect(QuizPost).toHaveBeenCalledTimes(2);
+    expect(submitQuiz).toHaveBeenCalledTimes(2);
   });
 
   it("submits only once even if the candidate keeps clicking", async () => {
     let resolveSubmit;
-    QuizPost.mockImplementationOnce(
+    submitQuiz.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
           resolveSubmit = resolve;
         })
     );
-    render(<Quiz />);
+    await renderQuiz();
 
     answerAll(questions.map(() => "x"));
 
@@ -129,23 +192,23 @@ describe("Quiz component", () => {
     await act(async () => {
       resolveSubmit({ msg: "saved" });
     });
-    expect(QuizPost).toHaveBeenCalledTimes(1);
+    expect(submitQuiz).toHaveBeenCalledTimes(1);
   });
 
   it("submits whatever has been answered when the overall timer expires", async () => {
-    render(<Quiz />);
+    await renderQuiz();
 
     type("partial");
     clickButton("expire-countdown");
 
-    await waitFor(() => expect(QuizPost).toHaveBeenCalledTimes(1));
-    const [submission] = QuizPost.mock.calls[0];
+    await waitFor(() => expect(submitQuiz).toHaveBeenCalledTimes(1));
+    const [submission] = submitQuiz.mock.calls[0];
     expect(submission.question[0].answerText).toBe("partial");
     expect(submission.question[1].answerText).toBe("");
   });
 
   it("hides the countdown once the quiz has been submitted", async () => {
-    render(<Quiz />);
+    await renderQuiz();
 
     answerAll(questions.map(() => "x"));
 
@@ -167,8 +230,8 @@ describe("Quiz component", () => {
       vi.useRealTimers();
     });
 
-    it("auto-advances when a question's time runs out", () => {
-      render(<Quiz />);
+    it("auto-advances when a question's time runs out", async () => {
+      await renderQuiz();
 
       type("slow answer");
       act(() => {
@@ -179,7 +242,7 @@ describe("Quiz component", () => {
     });
 
     it("keeps the answer that was on screen when time ran out", async () => {
-      render(<Quiz />);
+      await renderQuiz();
 
       type("slow answer");
       // Each expiry is a separate render, so the next question's timer is
@@ -191,16 +254,16 @@ describe("Quiz component", () => {
       }
 
       // RTL's waitFor polls on timers, which are faked here.
-      expect(QuizPost).toHaveBeenCalledTimes(1);
-      expect(QuizPost.mock.calls[0][0].question[0].answerText).toBe(
+      expect(submitQuiz).toHaveBeenCalledTimes(1);
+      expect(submitQuiz.mock.calls[0][0].question[0].answerText).toBe(
         "slow answer"
       );
     });
 
-    it("typing does not restart the question clock", () => {
+    it("typing does not restart the question clock", async () => {
       // Regression: the timer effect used to depend on the draft answer, so
       // every keystroke bought another full three minutes.
-      render(<Quiz />);
+      await renderQuiz();
 
       act(() => {
         vi.advanceTimersByTime(QUESTION_TIME_LIMIT_MS - 1000);

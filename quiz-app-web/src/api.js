@@ -1,11 +1,11 @@
 /**
- * The single API call this app makes.
+ * The two API calls this app makes.
  *
- * Kept free of React so it can be unit-tested directly and swapped for another
- * transport without touching the component.
+ * Kept free of React so they can be unit-tested directly and swapped for
+ * another transport without touching the component.
  */
 
-/** Thrown for any failed submission; `status` is null for transport failures. */
+/** Thrown for any failed call; `status` is null for transport failures. */
 export class QuizApiError extends Error {
   constructor(message, status = null) {
     super(message);
@@ -14,7 +14,6 @@ export class QuizApiError extends Error {
   }
 }
 
-const DEFAULT_ERROR = "Failed to submit quiz";
 const NETWORK_ERROR =
   "Unable to reach the quiz API. Check that it is running and try again.";
 
@@ -27,23 +26,12 @@ function apiBaseUrl() {
   return raw.endsWith("/") ? raw : `${raw}/`;
 }
 
-/**
- * POST a completed quiz.
- *
- * @param {{question: Array, submittedBy: string}} quiz
- * @returns {Promise<object>} the parsed response body
- * @throws {QuizApiError} on a non-2xx response or a transport failure
- */
-export async function QuizPost(quiz) {
-  const url = `${apiBaseUrl()}submit_quiz/`;
+async function request(path, init, fallbackMessage) {
+  const url = `${apiBaseUrl()}${path}`;
 
   let response;
   try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: quiz }),
-    });
+    response = await fetch(url, init);
   } catch {
     // fetch only rejects on a transport failure; a 4xx/5xx resolves normally.
     throw new QuizApiError(NETWORK_ERROR);
@@ -59,10 +47,43 @@ export async function QuizPost(quiz) {
   }
 
   if (!response.ok) {
-    const message =
-      (payload && (payload.msg || payload.detail)) || DEFAULT_ERROR;
+    const message = (payload && (payload.msg || payload.detail)) || fallbackMessage;
     throw new QuizApiError(message, response.status);
   }
 
   return payload ?? {};
+}
+
+/**
+ * GET the questions to ask. The API never sends the reference answers.
+ *
+ * @returns {Promise<Array<{id: number, questionText: string}>>}
+ * @throws {QuizApiError} on a non-2xx response or a transport failure
+ */
+export async function fetchQuestions() {
+  const payload = await request(
+    "questions/",
+    { headers: { Accept: "application/json" } },
+    "Failed to load the quiz"
+  );
+  return Array.isArray(payload.questions) ? payload.questions : [];
+}
+
+/**
+ * POST a completed quiz. The API marks it and returns the score.
+ *
+ * @param {{question: Array<{questionText: string, answerText: string}>, submittedBy: string}} quiz
+ * @returns {Promise<{msg: string, quizId: number, score: number}>}
+ * @throws {QuizApiError} on a non-2xx response or a transport failure
+ */
+export function submitQuiz(quiz) {
+  return request(
+    "submit_quiz/",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: quiz }),
+    },
+    "Failed to submit quiz"
+  );
 }

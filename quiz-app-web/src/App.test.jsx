@@ -1,13 +1,16 @@
 import { render, screen } from "@testing-library/react";
 
 import App from "./App.jsx";
-import questions from "./constants/constants";
+import { QUESTIONS } from "./test/questions";
 
-vi.mock("./api", () => ({ QuizPost: vi.fn() }));
+vi.mock("./api", () => ({
+  fetchQuestions: vi.fn(() => Promise.resolve(QUESTIONS)),
+  submitQuiz: vi.fn(),
+}));
 
-test("renders the quiz on its first question", () => {
+test("loads the quiz from the API and shows the first question", async () => {
   render(<App />);
 
-  expect(screen.getByText(questions[0].questionText)).toBeInTheDocument();
+  expect(await screen.findByText(QUESTIONS[0].questionText)).toBeInTheDocument();
   expect(screen.getByRole("progressbar")).toBeInTheDocument();
 });

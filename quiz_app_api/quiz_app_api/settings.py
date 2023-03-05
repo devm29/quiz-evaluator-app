@@ -122,8 +122,8 @@ CORS_ALLOWED_ORIGINS = env_list(
 # --------------------------------------------------------------------------
 # Django REST Framework
 # --------------------------------------------------------------------------
-# The API is write-only (one POST). No pagination class is configured because
-# there is no list endpoint to paginate; the read surface is the Django admin.
+# No pagination class: the only list endpoint serves the quiz itself, capped
+# at QUIZ_MAX_QUESTIONS_PER_SUBMISSION. Submissions are read in the admin.
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],

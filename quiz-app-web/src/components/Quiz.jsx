@@ -1,19 +1,39 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer } from "react";
 import Countdown from "react-countdown";
 
-import { QUESTION_TIME_LIMIT_MS, QUIZ_TIME_LIMIT_MS } from "../constants/constants";
-import { QuizPost } from "../api";
+import { QUESTION_TIME_LIMIT_MS } from "../constants/constants";
+import { fetchQuestions, submitQuiz } from "../api";
 import { answeredCount, createInitialState, quizReducer } from "./quizReducer";
 
 import "../style/quiz.css";
 
 const Quiz = () => {
   const [state, dispatch] = useReducer(quizReducer, undefined, createInitialState);
-  const [deadline] = useState(() => Date.now() + QUIZ_TIME_LIMIT_MS);
 
-  const { answers, draft, error, index, phase } = state;
+  const { answers, deadline, draft, error, index, phase } = state;
   const total = answers.length;
   const isLastQuestion = index + 1 === total;
+
+  useEffect(() => {
+    if (phase !== "loading") {
+      return undefined;
+    }
+    let cancelled = false;
+    fetchQuestions()
+      .then((questions) => {
+        if (!cancelled) {
+          dispatch({ type: "loaded", questions, now: Date.now() });
+        }
+      })
+      .catch((loadError) => {
+        if (!cancelled) {
+          dispatch({ type: "loadFailed", message: loadError.message });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [phase]);
 
   // Per-question time limit. Depends on the question showing, not on what is
   // being typed, so the clock is not restarted by every keystroke.
@@ -37,7 +57,7 @@ const Quiz = () => {
     }
     let cancelled = false;
     // No score: the API marks the answers against its own catalogue.
-    QuizPost({ question: answers, submittedBy: "" })
+    submitQuiz({ question: answers, submittedBy: "" })
       .then(() => {
         if (!cancelled) {
           dispatch({ type: "submitted" });
@@ -54,7 +74,7 @@ const Quiz = () => {
   }, [phase, answers]);
 
   const answered = answeredCount(state);
-  const progressPercent = Math.round((answered / total) * 100);
+  const progressPercent = total ? Math.round((answered / total) * 100) : 0;
 
   return (
     <main className="quiz" aria-live="polite">
@@ -82,6 +102,30 @@ const Quiz = () => {
           style={{ width: `${progressPercent}%` }}
         />
       </div>
+
+      {phase === "loading" ? (
+        <section className="quiz__panel">
+          <p className="quiz__status" role="status">
+            Loading the questions…
+          </p>
+        </section>
+      ) : null}
+
+      {phase === "unavailable" ? (
+        <section className="quiz__panel quiz__panel--error">
+          <h2 className="quiz__done-title">The quiz could not be loaded</h2>
+          <p className="quiz__error" role="alert">
+            {error}
+          </p>
+          <button
+            type="button"
+            className="quiz__button"
+            onClick={() => dispatch({ type: "reload" })}
+          >
+            Try again
+          </button>
+        </section>
+      ) : null}
 
       {phase === "submitted" ? (
         <section className="quiz__panel quiz__panel--done">

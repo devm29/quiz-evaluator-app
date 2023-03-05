@@ -1,4 +1,4 @@
-"""HTTP-level tests for the submit-quiz endpoint."""
+"""HTTP-level tests for the quiz endpoints."""
 
 from django.core.cache import cache
 from django.test import override_settings
@@ -232,6 +232,60 @@ class ServerMarkingTests(APITestCase):
 
         quiz = Quiz.objects.get()
         self.assertEqual((quiz.score, quiz.evaluated_by), (2, ""))
+
+
+class QuestionListApiTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.url = reverse("questions")
+
+    def test_serves_catalogue_questions_in_order_without_answers(self):
+        first = Question.objects.create(question_text="First?", answer_text="a")
+        second = Question.objects.create(question_text="Second?", answer_text="b")
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.json(),
+            {
+                "questions": [
+                    {"id": first.pk, "questionText": "First?"},
+                    {"id": second.pk, "questionText": "Second?"},
+                ]
+            },
+        )
+        self.assertNotIn('"a"', response.content.decode())
+
+    def test_questions_added_by_submissions_are_not_served(self):
+        Question.objects.create(question_text="Real?", answer_text="yes")
+        self.client.post(
+            reverse("submit_quiz"),
+            {"question": [{"questionText": "Injected?", "answerText": "x"}]},
+            format="json",
+        )
+
+        served = self.client.get(self.url).json()["questions"]
+        texts = [question["questionText"] for question in served]
+
+        self.assertEqual(texts, ["Real?"])
+
+    def test_an_unseeded_catalogue_serves_an_empty_quiz(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.json(), {"questions": []})
+
+    @override_settings(QUIZ_MAX_QUESTIONS_PER_SUBMISSION=2)
+    def test_never_serves_more_than_one_submission_can_carry(self):
+        for index in range(3):
+            Question.objects.create(question_text=f"Q{index}?", answer_text="x")
+
+        self.assertEqual(len(self.client.get(self.url).json()["questions"]), 2)
+
+    def test_post_is_not_allowed(self):
+        response = self.client.post(self.url, {}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 class HealthCheckApiTests(APITestCase):

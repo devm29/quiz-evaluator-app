@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import logging
 
+from django.conf import settings
 from django.db import DatabaseError, connections
 from rest_framework import status, views
 from rest_framework.response import Response
 
+from quiz.models import Question
 from quiz.serializers import (
     INVALID_SUBMISSION,
     MISSING_FIELDS,
@@ -22,6 +24,30 @@ from quiz.serializers import (
 from quiz.services import save_submission
 
 logger = logging.getLogger(__name__)
+
+
+class QuestionListApiView(views.APIView):
+    """``GET /questions/`` — the quiz the client asks, without the answers.
+
+    Only questions with a reference answer are served: submissions can add
+    rows to the catalogue with arbitrary text, and those must not leak into
+    the quiz. The list is capped at the submission limit so a client can
+    always post back everything it was given.
+    """
+
+    def get(self, request):
+        questions = (
+            Question.objects.exclude(answer_text="")
+            .order_by("id")
+            .values_list("id", "question_text")
+        )[: settings.QUIZ_MAX_QUESTIONS_PER_SUBMISSION]
+        return Response(
+            data={
+                "questions": [
+                    {"id": pk, "questionText": text} for pk, text in questions
+                ]
+            }
+        )
 
 
 class SubmitQuizApiView(views.APIView):
