@@ -1,0 +1,15 @@
+{
+  "short_name": "Quiz",
+  "name": "Quiz",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#3c0f3c",
+  "background_color": "#f7f5fa"
+}

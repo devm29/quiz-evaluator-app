@@ -1,0 +1,42 @@
+# Brings up the whole stack with `docker compose up --build`.
+# The API migrates and seeds itself on boot, so there is nothing to run by hand.
+#
+# Host ports: 8220 = web UI, 8221 = API.
+
+services:
+  api:
+    build:
+      context: ./quiz_app_api
+    image: quiz-api
+    environment:
+      # Generated once here so signed values survive a container restart.
+      # Replace with a real secret for anything beyond local use.
+      DJANGO_SECRET_KEY: local-development-only-do-not-reuse
+      DJANGO_DEBUG: "false"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,api,[::1]"
+      DJANGO_CORS_ALLOWED_ORIGINS: "http://localhost:8220,http://127.0.0.1:8220"
+      DJANGO_SQLITE_PATH: /data/db.sqlite3
+      DJANGO_LOG_LEVEL: INFO
+      QUIZ_SCORING_STRATEGY: client-reported
+    volumes:
+      - quiz-data:/data
+    ports:
+      - "8221:8000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./quiz-app-web
+      args:
+        # Baked into the bundle: the browser, not the container, calls the API.
+        REACT_APP_API_BASEURL: http://localhost:8221/
+    image: quiz-web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8220:8080"
+    restart: unless-stopped
+
+volumes:
+  quiz-data:

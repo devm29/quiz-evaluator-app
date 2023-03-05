@@ -1,0 +1,4 @@
+/* The quiz owns its own layout; App is just the routing shell. */
+.App {
+  width: 100%;
+}

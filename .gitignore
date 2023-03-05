@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+project_venv/
+.uplift_venv/
+.venv/
+venv/
+db.sqlite3
+quiz_app_api/staticfiles/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+quiz-app-web/build/
+quiz-app-web/dist/
+coverage/
+npm-debug.log*
+
+# Local environment: never commit real values
+.env
+.env.*
+!.env.example
+
+# Logs, scratch, OS
+*.log
+log/
+tmp/
+.DS_Store
+
+# Not part of this project
+.github/
