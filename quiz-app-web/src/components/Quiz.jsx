@@ -10,7 +10,7 @@ import "../style/quiz.css";
 const Quiz = () => {
   const [state, dispatch] = useReducer(quizReducer, undefined, createInitialState);
 
-  const { answers, deadline, draft, error, index, phase } = state;
+  const { answers, deadline, draft, error, index, name, phase, score } = state;
   const total = answers.length;
   const isLastQuestion = index + 1 === total;
 
@@ -22,7 +22,7 @@ const Quiz = () => {
     fetchQuestions()
       .then((questions) => {
         if (!cancelled) {
-          dispatch({ type: "loaded", questions, now: Date.now() });
+          dispatch({ type: "loaded", questions });
         }
       })
       .catch((loadError) => {
@@ -57,10 +57,10 @@ const Quiz = () => {
     }
     let cancelled = false;
     // No score: the API marks the answers against its own catalogue.
-    submitQuiz({ question: answers, submittedBy: "" })
-      .then(() => {
+    submitQuiz({ question: answers, submittedBy: name.trim() })
+      .then((result) => {
         if (!cancelled) {
-          dispatch({ type: "submitted" });
+          dispatch({ type: "submitted", score: result.score });
         }
       })
       .catch((submitError) => {
@@ -71,7 +71,7 @@ const Quiz = () => {
     return () => {
       cancelled = true;
     };
-  }, [phase, answers]);
+  }, [phase, answers, name]);
 
   const answered = answeredCount(state);
   const progressPercent = total ? Math.round((answered / total) * 100) : 0;
@@ -127,11 +127,50 @@ const Quiz = () => {
         </section>
       ) : null}
 
+      {phase === "ready" ? (
+        <section className="quiz__panel">
+          <h2 className="quiz__question">
+            {total} questions, {QUESTION_TIME_LIMIT_MS / 60000} minutes each
+          </h2>
+          <p className="quiz__hint">
+            Type each answer and press Enter. A question moves on by itself when
+            its time runs out, and your answers are marked when you submit.
+          </p>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              dispatch({ type: "start", now: Date.now() });
+            }}
+          >
+            <label className="quiz__label" htmlFor="name">
+              Your name <span className="quiz__optional">(optional)</span>
+            </label>
+            <input
+              id="name"
+              className="quiz__input"
+              autoComplete="name"
+              maxLength={150}
+              value={name}
+              onChange={(event) =>
+                dispatch({ type: "name", value: event.target.value })
+              }
+            />
+            <button type="submit" className="quiz__button">
+              Start the quiz
+            </button>
+          </form>
+        </section>
+      ) : null}
+
       {phase === "submitted" ? (
         <section className="quiz__panel quiz__panel--done">
-          <h2 className="quiz__done-title">Thank you for taking this quiz.</h2>
+          <h2 className="quiz__done-title">
+            {name.trim() ? `Thank you, ${name.trim()}.` : "Thank you for taking this quiz."}
+          </h2>
           <p className="quiz__done-body">
-            All {total} answers were recorded.
+            {typeof score === "number"
+              ? `You scored ${score} out of ${total}.`
+              : `All ${total} answers were recorded.`}
           </p>
         </section>
       ) : null}

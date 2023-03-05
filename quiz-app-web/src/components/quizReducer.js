@@ -9,7 +9,7 @@
 import { QUESTION_TIME_LIMIT_MS } from "../constants/constants";
 
 /**
- * @typedef {"loading" | "unavailable" | "answering" | "submitting" | "submitted" | "failed"} Phase
+ * @typedef {"loading" | "unavailable" | "ready" | "answering" | "submitting" | "submitted" | "failed"} Phase
  */
 
 export function createInitialState() {
@@ -21,8 +21,12 @@ export function createInitialState() {
     /** @type {Phase} */
     phase: "loading",
     error: "",
+    /** Optional, sent as submittedBy. */
+    name: "",
     /** Epoch milliseconds at which the whole attempt runs out. */
     deadline: null,
+    /** The mark the API returned, once submitted. */
+    score: null,
   };
 }
 
@@ -53,11 +57,23 @@ export function quizReducer(state, action) {
         })),
         index: 0,
         draft: "",
-        phase: "answering",
+        phase: "ready",
         error: "",
-        deadline: action.now + action.questions.length * QUESTION_TIME_LIMIT_MS,
       };
     }
+
+    case "name":
+      return state.phase === "ready" ? { ...state, name: action.value } : state;
+
+    // The clock starts here, not on load, so reading the instructions is free.
+    case "start":
+      return state.phase === "ready"
+        ? {
+            ...state,
+            phase: "answering",
+            deadline: action.now + state.answers.length * QUESTION_TIME_LIMIT_MS,
+          }
+        : state;
 
     case "loadFailed":
       return state.phase === "loading"
@@ -103,7 +119,7 @@ export function quizReducer(state, action) {
         : state;
 
     case "submitted":
-      return { ...state, phase: "submitted" };
+      return { ...state, phase: "submitted", score: action.score ?? null };
 
     case "failed":
       return { ...state, phase: "failed", error: action.message };

@@ -199,3 +199,7 @@ body {
   line-height: 1.55;
   color: var(--ink-muted);
 }
+
+.quiz__optional {
+  font-weight: 400;
+}

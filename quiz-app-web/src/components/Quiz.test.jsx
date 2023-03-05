@@ -21,9 +21,14 @@ const clickButton = (name) =>
 
 // Resolves the mocked questions fetch without polling, so it also works
 // while timers are faked.
-async function renderQuiz() {
+async function loadQuiz() {
   render(<Quiz />);
   await act(async () => {});
+}
+
+async function renderQuiz() {
+  await loadQuiz();
+  clickButton("Start the quiz");
 }
 
 function answerAll(answers) {
@@ -52,14 +57,14 @@ describe("loading the quiz", () => {
 
     await act(async () => resolveQuestions(questions));
 
-    expect(screen.getByText(questions[0].questionText)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start the quiz" })).toBeInTheDocument();
   });
 
   it("explains a failed load and loads again on request", async () => {
     fetchQuestions
       .mockRejectedValueOnce(new Error("Unable to reach the quiz API."))
       .mockResolvedValueOnce(questions);
-    await renderQuiz();
+    await loadQuiz();
 
     expect(screen.getByRole("alert")).toHaveTextContent("Unable to reach the quiz API.");
 
@@ -67,12 +72,12 @@ describe("loading the quiz", () => {
     await act(async () => {});
 
     expect(fetchQuestions).toHaveBeenCalledTimes(2);
-    expect(screen.getByText(questions[0].questionText)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start the quiz" })).toBeInTheDocument();
   });
 
   it("says so when the API has no questions", async () => {
     fetchQuestions.mockResolvedValueOnce([]);
-    await renderQuiz();
+    await loadQuiz();
 
     expect(screen.getByRole("alert")).toHaveTextContent("There are no questions yet");
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuemax", "0");
@@ -84,6 +89,52 @@ describe("loading the quiz", () => {
 
     expect(screen.getByText(questions.at(-1).questionText)).toBeInTheDocument();
     expect(screen.getByText(`of ${questions.length}`, { exact: false })).toBeInTheDocument();
+  });
+});
+
+describe("start screen", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fetchQuestions.mockResolvedValue(questions);
+    submitQuiz.mockResolvedValue({ msg: "saved", score: 2 });
+  });
+
+  it("says how long the quiz is before the clock starts", async () => {
+    await loadQuiz();
+
+    expect(
+      screen.getByRole("heading", { name: `${questions.length} questions, 3 minutes each` })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "expire-countdown" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Your answer")).not.toBeInTheDocument();
+  });
+
+  it("starts on Enter in the name field as well as the button", async () => {
+    await loadQuiz();
+
+    fireEvent.submit(screen.getByLabelText(/Your name/));
+
+    expect(screen.getByText(questions[0].questionText)).toBeInTheDocument();
+  });
+
+  it("sends the trimmed name and shows the mark the API returned", async () => {
+    await loadQuiz();
+    fireEvent.change(screen.getByLabelText(/Your name/), {
+      target: { value: "  Sam Rivera " },
+    });
+    clickButton("Start the quiz");
+
+    answerAll(questions.map(() => "x"));
+
+    expect(await screen.findByText("Thank you, Sam Rivera.")).toBeInTheDocument();
+    expect(screen.getByText(`You scored 2 out of ${questions.length}.`)).toBeInTheDocument();
+    expect(submitQuiz.mock.calls[0][0].submittedBy).toBe("Sam Rivera");
+  });
+
+  it("caps the name at what the API accepts", async () => {
+    await loadQuiz();
+
+    expect(screen.getByLabelText(/Your name/)).toHaveAttribute("maxLength", "150");
   });
 });
 
